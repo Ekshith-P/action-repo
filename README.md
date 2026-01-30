@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # webhook-repo
 
 Flask webhook endpoint that receives GitHub events (Push, Pull Request, Merge) from **action-repo**, stores them in MongoDB, and serves a UI that polls every 15 seconds.
@@ -74,3 +75,6 @@ To receive GitHub webhooks on your machine:
 ngrok http 5000
 # Use the https URL as Payload URL in GitHub webhook
 ```
+=======
+# action-repo
+>>>>>>> 3b9a6239da7f260e5ed1e82ac84419994829ab44
