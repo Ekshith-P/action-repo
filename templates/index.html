@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Activity — Webhook Receiver</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      background: #0d1117;
+      color: #e6edf3;
+      margin: 0;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #58a6ff;
+      margin-bottom: 8px;
+    }
+    .sub {
+      font-size: 0.8rem;
+      color: #8b949e;
+      margin-bottom: 24px;
+    }
+    .event {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+    .event .author { color: #58a6ff; }
+    .event .branch { color: #7ee787; }
+    .event .time { color: #8b949e; font-size: 0.85rem; }
+    .event .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      margin-right: 8px;
+    }
+    .event.push .tag { background: #a371f7; color: #fff; }
+    .event.pull_request .tag { background: #d29922; color: #000; }
+    .event.merge .tag { background: #3fb950; color: #000; }
+    .empty {
+      text-align: center;
+      color: #8b949e;
+      padding: 48px 24px;
+    }
+    .poll-note { font-size: 0.75rem; color: #6e7681; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>GitHub Activity</h1>
+    <p class="sub">Latest Push, Pull Request, and Merge events (polling every 15s)</p>
+    <div id="events"></div>
+    <p class="poll-note">Refreshes every 15 seconds from MongoDB.</p>
+  </div>
+  <script>
+    const POLL_INTERVAL_MS = 15000;
+
+    function buildEventHtml(e) {
+      const author = (e.author || 'Unknown').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const toBranch = (e.to_branch || '?').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const fromBranch = (e.from_branch || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const time = (e.timestamp_formatted || e.timestamp || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const tag = (e.action || '').toUpperCase();
+      const tagClass = e.action === 'push' ? 'push' : e.action === 'merge' ? 'merge' : 'pull_request';
+
+      let msg = '';
+      if (e.action === 'push') {
+        msg = '<span class="author">' + author + '</span> pushed to <span class="branch">' + toBranch + '</span> on <span class="time">' + time + '</span>';
+      } else if (e.action === 'pull_request') {
+        msg = '<span class="author">' + author + '</span> submitted a pull request from <span class="branch">' + fromBranch + '</span> to <span class="branch">' + toBranch + '</span> on <span class="time">' + time + '</span>';
+      } else if (e.action === 'merge') {
+        msg = '<span class="author">' + author + '</span> merged branch <span class="branch">' + fromBranch + '</span> to <span class="branch">' + toBranch + '</span> on <span class="time">' + time + '</span>';
+      } else {
+        msg = JSON.stringify(e);
+      }
+
+      return '<div class="event ' + tagClass + '"><span class="tag">' + tag + '</span>' + msg + '</div>';
+    }
+
+    function render(events) {
+      const el = document.getElementById('events');
+      if (!events || events.length === 0) {
+        el.innerHTML = '<div class="empty">No events yet. Configure the webhook on your action-repo to send Push and Pull Request events here.</div>';
+        return;
+      }
+      el.innerHTML = events.map(buildEventHtml).join('');
+    }
+
+    function fetchEvents() {
+      fetch('/api/events')
+        .then(function(r) { return r.json(); })
+        .then(render)
+        .catch(function() { render([]); });
+    }
+
+    fetchEvents();
+    setInterval(fetchEvents, POLL_INTERVAL_MS);
+  </script>
+</body>
+</html>
